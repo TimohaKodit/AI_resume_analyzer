@@ -1,6 +1,0 @@
-requests
-feedparser
-google-generativeai
-aiogram
-python-dotenv
-apscheduler
