@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langchain
+langchain-google-genai
+python-dotenv
+pypdf2
+python-multipart
+pydantic
+aiohttp
+feedparser
+sqlalchemy
+asyncpg
+alembic
+passlib
+python-jose[cryptography]
+bcrypt
