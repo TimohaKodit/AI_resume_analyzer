@@ -2,11 +2,11 @@ from chains.resume_chain import chain
 from services.resume_parser import parse_resume
 
 
-def analyze_resume(file_path: str) -> str:
-    prs_resume = parse_resume(file_path)
+async def analyze_resume(text: str) -> str:
     try:    
-        result = chain.invoke({'resume': prs_resume})
-
+        result = await chain.ainvoke({'resume': text})
         return result
-    except:
-        return "Произошла ошибка! Попробуйте позже"
+    except Exception as e:
+        #  return "Произошла ошибка! Попробуйте позже"
+        return e
+        

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Resume Analyzer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3347;
+      --accent: #6c63ff;
+      --accent-hover: #7d75ff;
+      --text: #e8eaf0;
+      --text-muted: #7b82a0;
+      --success: #4ade80;
+      --error: #f87171;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--text); }
+    .nav-tabs { display: flex; gap: 6px; }
+    .nav-tab {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .nav-tab:hover { color: var(--text); background: var(--surface2); }
+    .nav-tab.active { color: var(--accent); background: rgba(108,99,255,0.12); }
+    .nav-right { display: flex; gap: 10px; align-items: center; }
+    #nav-email { font-size: 0.85rem; color: var(--text-muted); }
+    .btn-logout {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover { border-color: var(--error); color: var(--error); }
+
+    /* ── PAGES ── */
+    .page { display: none; padding: 48px 40px; max-width: 900px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* ── AUTH ── */
+    #page-auth {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px;
+      max-width: 100%;
+    }
+    #page-auth.active { display: flex; }
+    .auth-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .auth-box h2 { font-size: 1.5rem; margin-bottom: 6px; }
+    .auth-box p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+    .auth-tabs { display: flex; gap: 4px; margin-bottom: 28px; background: var(--bg); border-radius: 8px; padding: 4px; }
+    .auth-tab {
+      flex: 1; padding: 8px; border: none; background: transparent;
+      color: var(--text-muted); cursor: pointer; border-radius: 6px;
+      font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+    }
+    .auth-tab.active { background: var(--surface); color: var(--text); }
+
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--accent); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 22px; border-radius: 8px; border: none;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent; color: var(--accent);
+      border: 1px solid var(--accent); padding: 9px 18px;
+    }
+    .btn-outline:hover { background: rgba(108,99,255,0.1); }
+
+    /* ── ALERTS ── */
+    .alert {
+      padding: 12px 16px; border-radius: 8px;
+      font-size: 0.9rem; margin-bottom: 16px; display: none;
+    }
+    .alert.show { display: block; }
+    .alert-error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--error); }
+    .alert-success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--success); }
+
+    /* ── MAIN ── */
+    .section-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .section-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 48px 28px; text-align: center; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 20px;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .upload-zone h3 { font-size: 1rem; margin-bottom: 6px; }
+    .upload-zone p { font-size: 0.85rem; color: var(--text-muted); }
+    #file-input { display: none; }
+
+    .resume-status {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+    }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+    .status-dot.ok { background: var(--success); }
+    .status-text { font-size: 0.9rem; color: var(--text-muted); }
+    .status-text strong { color: var(--text); }
+
+    /* Result block */
+    .result-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+      margin-top: 20px; display: none; white-space: pre-wrap;
+      font-size: 0.9rem; line-height: 1.8; max-height: 600px; overflow-y: auto;
+    }
+    .result-block.show { display: block; }
+    .result-block h3, .result-block h4 { color: var(--accent); margin: 16px 0 6px; }
+    .result-block strong { color: var(--text); }
+
+    /* ── VACANCIES ── */
+    .search-bar {
+      display: flex; gap: 12px; margin-bottom: 28px;
+    }
+    .search-bar input {
+      flex: 1; padding: 12px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.95rem; outline: none;
+    }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar .btn { padding: 12px 24px; }
+
+    .vacancies-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .vac-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; cursor: pointer;
+      transition: all 0.2s; display: flex; flex-direction: column; gap: 10px;
+    }
+    .vac-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .vac-card h4 { font-size: 0.95rem; font-weight: 600; line-height: 1.4; }
+    .vac-badge {
+      display: inline-block; padding: 3px 10px;
+      background: rgba(108,99,255,0.15); color: var(--accent);
+      border-radius: 20px; font-size: 0.78rem; font-weight: 500; width: fit-content;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px); z-index: 200;
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); width: 100%; max-width: 720px;
+      max-height: 88vh; overflow-y: auto; padding: 36px;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--surface2); border: none; color: var(--text-muted);
+      width: 32px; height: 32px; border-radius: 8px;
+      cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close:hover { color: var(--text); background: var(--border); }
+    .modal h2 { font-size: 1.2rem; margin-bottom: 8px; padding-right: 40px; }
+    .modal-meta { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .modal-link {
+      font-size: 0.85rem; color: var(--accent); text-decoration: none;
+    }
+    .modal-link:hover { text-decoration: underline; }
+    .modal-body {
+      font-size: 0.9rem; color: var(--text-muted); line-height: 1.8;
+      white-space: pre-wrap; max-height: 260px; overflow-y: auto;
+      background: var(--surface2); border-radius: 8px; padding: 16px;
+      margin-bottom: 20px;
+    }
+    .modal-divider {
+      height: 1px; background: var(--border); margin: 24px 0;
+    }
+    .compare-result {
+      font-size: 0.88rem; line-height: 1.8; color: var(--text);
+      white-space: pre-wrap; display: none;
+    }
+    .compare-result.show { display: block; }
+
+    /* ── SPINNER ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .spinner.show { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* Markdown-like rendering for AI output */
+    .ai-output h3 { color: var(--accent); font-size: 1rem; margin: 20px 0 8px; }
+    .ai-output h4 { color: var(--text); font-size: 0.95rem; margin: 14px 0 6px; }
+    .ai-output ul { padding-left: 20px; }
+    .ai-output li { margin-bottom: 4px; }
+    .ai-output strong { color: var(--text); }
+    .ai-output p { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <div class="logo">AI<span>Resume</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="main">Резюме</button>
+    <button class="nav-tab" data-page="vacancies">Вакансии</button>
+  </div>
+  <div class="nav-right">
+    <span id="nav-email"></span>
+    <button class="btn-logout" onclick="logout()">Выйти</button>
+  </div>
+</nav>
+
+<!-- ── AUTH PAGE ── -->
+<div id="page-auth" class="page active">
+  <div class="auth-box">
+    <h2>Добро пожаловать</h2>
+    <p>AI-анализ резюме и подбор вакансий</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Войти</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Регистрация</button>
+    </div>
+
+    <div id="auth-alert" class="alert alert-error"></div>
+    <div id="auth-success" class="alert alert-success"></div>
+
+    <!-- Login -->
+    <form id="form-login" onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" required />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="login-pass" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-login">
+        <span class="spinner" id="spinner-login"></span>
+        Войти
+      </button>
+    </form>
+
+    <!-- Register -->
+    <form id="form-register" style="display:none" onsubmit="doRegister(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" required />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="reg-pass" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-reg">
+        <span class="spinner" id="spinner-reg"></span>
+        Создать аккаунт
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ── MAIN PAGE ── -->
+<div id="page-main" class="page">
+  <div class="section-title">Моё резюме</div>
+  <div class="section-sub">Загрузите PDF и получите детальный AI-анализ</div>
+
+  <div class="card">
+    <div class="resume-status" id="resume-status">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="status-text" id="status-text">Резюме не загружено</div>
+    </div>
+
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">📄</div>
+      <h3>Нажмите или перетащите PDF</h3>
+      <p>Только PDF файлы, до 10 МБ</p>
+    </div>
+    <input type="file" id="file-input" accept=".pdf" onchange="uploadResume(this)" />
+
+    <div id="upload-alert" class="alert alert-error"></div>
+    <div id="upload-success" class="alert alert-success"></div>
+
+    <button class="btn btn-primary" onclick="analyzeResume()" id="btn-analyze" style="max-width:220px">
+      <span class="spinner" id="spinner-analyze"></span>
+      ✨ Анализировать резюме
+    </button>
+  </div>
+
+  <div class="result-block ai-output" id="analyze-result"></div>
+</div>
+
+<!-- ── VACANCIES PAGE ── -->
+<div id="page-vacancies" class="page">
+  <div class="section-title">Вакансии</div>
+  <div class="section-sub">Найдите подходящие вакансии и сравните с резюме</div>
+
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Python developer, Data Scientist..." onkeydown="if(event.key==='Enter') searchVacancies()" />
+    <button class="btn btn-primary" onclick="searchVacancies()" id="btn-search" style="width:auto">
+      <span class="spinner" id="spinner-search"></span>
+      Найти
+    </button>
+  </div>
+
+  <div id="vac-alert" class="alert alert-error"></div>
+
+  <div id="vacancies-list" class="vacancies-grid">
+    <div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">🔍</div>
+      <p>Введите запрос и нажмите Найти</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── VACANCY MODAL ── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 id="modal-title"></h2>
+    <div class="modal-meta">
+      <a id="modal-link" class="modal-link" target="_blank" href="#">Открыть на Habr Career ↗</a>
+    </div>
+    <div class="modal-body" id="modal-body">Загрузка...</div>
+
+    <button class="btn btn-primary" onclick="compareResume()" id="btn-compare" style="max-width:260px">
+      <span class="spinner" id="spinner-compare"></span>
+      🔄 Сравнить с моим резюме
+    </button>
+
+    <div class="modal-divider" id="compare-divider" style="display:none"></div>
+    <div class="compare-result ai-output" id="compare-result"></div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+  let token = localStorage.getItem('token');
+  let userEmail = localStorage.getItem('email');
+  let currentVacUrl = '';
+
+  // ── INIT ──
+  window.addEventListener('DOMContentLoaded', () => {
+    if (token) {
+      showApp();
+    } else {
+      document.getElementById('page-auth').classList.add('active');
+    }
+    setupDragDrop();
+  });
+
+  function showApp() {
+    document.getElementById('page-auth').classList.remove('active');
+    document.getElementById('main-nav').style.display = 'flex';
+    document.getElementById('nav-email').textContent = userEmail || '';
+    showPage('main');
+  }
+
+  // ── NAVIGATION ──
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      showPage(tab.dataset.page);
+    });
+  });
+
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+  }
+
+  // ── AUTH ──
+  function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+    hideAlert('auth-alert'); hideAlert('auth-success');
+  }
+
+  async function doLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    setLoading('btn-login', 'spinner-login', true);
+    hideAlert('auth-alert');
+    try {
+      const body = new URLSearchParams({ username: email, password: pass });
+      const res = await fetch(`${API}/auth/login`, { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка входа');
+      token = data.access_token;
+      localStorage.setItem('token', token);
+      localStorage.setItem('email', email);
+      userEmail = email;
+      showApp();
+    } catch (err) {
+      showAlert('auth-alert', err.message);
+    } finally {
+      setLoading('btn-login', 'spinner-login', false);
+    }
+  }
+
+  async function doRegister(e) {
+    e.preventDefault();
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+    setLoading('btn-reg', 'spinner-reg', true);
+    hideAlert('auth-alert');
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка регистрации');
+      showAlert('auth-success', 'Аккаунт создан! Войдите.');
+      setTimeout(() => switchAuthTab('login'), 1200);
+    } catch (err) {
+      showAlert('auth-alert', err.message);
+    } finally {
+      setLoading('btn-reg', 'spinner-reg', false);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    token = null; userEmail = null;
+    document.getElementById('main-nav').style.display = 'none';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-auth').classList.add('active');
+    document.getElementById('analyze-result').classList.remove('show');
+  }
+
+  // ── RESUME UPLOAD ──
+  function setupDragDrop() {
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag');
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
+  }
+
+  function uploadResume(input) {
+    if (input.files[0]) uploadFile(input.files[0]);
+  }
+
+  async function uploadFile(file) {
+    if (file.type !== 'application/pdf') {
+      showAlert('upload-alert', 'Только PDF файлы'); return;
+    }
+    hideAlert('upload-alert'); hideAlert('upload-success');
+    const zone = document.getElementById('upload-zone');
+    zone.querySelector('h3').textContent = 'Загрузка...';
+
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch(`${API}/resume/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
+      showAlert('upload-success', 'Резюме успешно загружено');
+      setResumeStatus(true);
+    } catch (err) {
+      if (err.message.includes('401')) { logout(); return; }
+      showAlert('upload-alert', err.message);
+    } finally {
+      zone.querySelector('h3').textContent = 'Нажмите или перетащите PDF';
+    }
+  }
+
+  function setResumeStatus(hasResume) {
+    document.getElementById('status-dot').className = 'status-dot' + (hasResume ? ' ok' : '');
+    document.getElementById('status-text').innerHTML = hasResume
+      ? '<strong>Резюме загружено</strong> — готово к анализу'
+      : 'Резюме не загружено';
+  }
+
+  // ── ANALYZE ──
+  async function analyzeResume() {
+    setLoading('btn-analyze', 'spinner-analyze', true);
+    const result = document.getElementById('analyze-result');
+    result.classList.remove('show');
+    try {
+      const res = await fetch(`${API}/resume/analyze`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
+      result.innerHTML = renderMarkdown(data);
+      result.classList.add('show');
+      setResumeStatus(true);
+    } catch (err) {
+      if (err.message.includes('401')) { logout(); return; }
+      result.innerHTML = `<span style="color:var(--error)">${err.message}</span>`;
+      result.classList.add('show');
+    } finally {
+      setLoading('btn-analyze', 'spinner-analyze', false);
+    }
+  }
+
+  // ── VACANCIES ──
+  async function searchVacancies() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) return;
+    setLoading('btn-search', 'spinner-search', true);
+    hideAlert('vac-alert');
+    const list = document.getElementById('vacancies-list');
+    list.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">⏳</div><p>Ищем вакансии...</p></div>';
+    try {
+      const res = await fetch(`${API}/vacancies?query=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка поиска');
+      renderVacancies(data);
+    } catch (err) {
+      showAlert('vac-alert', err.message);
+      list.innerHTML = '';
+    } finally {
+      setLoading('btn-search', 'spinner-search', false);
+    }
+  }
+
+  function renderVacancies(vacancies) {
+    const list = document.getElementById('vacancies-list');
+    if (!vacancies.length) {
+      list.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">😔</div><p>Вакансий не найдено</p></div>';
+      return;
+    }
+    list.innerHTML = vacancies.map(v => `
+      <div class="vac-card" onclick="openVacancy('${escHtml(v.url)}', '${escHtml(v.name)}')">
+        <h4>${escHtml(v.name)}</h4>
+        <span class="vac-badge">Habr Career</span>
+      </div>
+    `).join('');
+  }
+
+  // ── MODAL ──
+  async function openVacancy(url, name) {
+    currentVacUrl = url;
+    document.getElementById('modal-title').textContent = name;
+    document.getElementById('modal-link').href = url;
+    document.getElementById('modal-body').textContent = 'Загрузка описания...';
+    document.getElementById('compare-result').classList.remove('show');
+    document.getElementById('compare-divider').style.display = 'none';
+    document.getElementById('modal-overlay').classList.add('show');
+
+    try {
+      const res = await fetch(`${API}/compare?vacansy_url=${encodeURIComponent(url)}`, {
+        method: 'HEAD',
+      });
+    } catch {}
+
+    // Load vacancy description via compare endpoint preview — or just show link
+    document.getElementById('modal-body').textContent = 'Описание доступно по ссылке выше. Нажмите «Сравнить» чтобы получить AI-анализ соответствия вашего резюме.';
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById('modal-overlay')) return;
+    document.getElementById('modal-overlay').classList.remove('show');
+  }
+
+  async function compareResume() {
+    setLoading('btn-compare', 'spinner-compare', true);
+    const resultEl = document.getElementById('compare-result');
+    resultEl.classList.remove('show');
+    document.getElementById('compare-divider').style.display = 'none';
+    try {
+      const res = await fetch(`${API}/compare?vacansy_url=${encodeURIComponent(currentVacUrl)}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка сравнения');
+      resultEl.innerHTML = renderMarkdown(data);
+      resultEl.classList.add('show');
+      document.getElementById('compare-divider').style.display = 'block';
+    } catch (err) {
+      if (err.message.includes('401')) { logout(); return; }
+      resultEl.innerHTML = `<span style="color:var(--error)">${err.message}</span>`;
+      resultEl.classList.add('show');
+      document.getElementById('compare-divider').style.display = 'block';
+    } finally {
+      setLoading('btn-compare', 'spinner-compare', false);
+    }
+  }
+
+  // ── HELPERS ──
+  function renderMarkdown(text) {
+    return text
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g, s => `<ul>${s}</ul>`)
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(?!<[hulo])/gm, '')
+  }
+
+  function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.classList.add('show');
+  }
+  function hideAlert(id) {
+    const el = document.getElementById(id);
+    el.textContent = ''; el.classList.remove('show');
+  }
+  function setLoading(btnId, spinnerId, loading) {
+    document.getElementById(btnId).disabled = loading;
+    const s = document.getElementById(spinnerId);
+    s.classList.toggle('show', loading);
+  }
+  function escHtml(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>

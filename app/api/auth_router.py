@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from fastapi.security import OAuth2PasswordRequestForm
 
 
 load_dotenv()
@@ -42,14 +43,14 @@ async def reg(item: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 @auth_router.post("/auth/login")
-async def login_func(item: UserRegister, db: AsyncSession = Depends(get_db)):
-    search = await db.execute(select(User).where(User.email == item.email))
+async def login_func(form: OAuth2PasswordRequestForm=Depends(), db: AsyncSession = Depends(get_db)):
+    search = await db.execute(select(User).where(User.email == form.username))
     user = search.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь с таким EMAIL не найден")
     else:
-        correct_pass = pwd_context.verify(item.password, user.hashed_password)
+        correct_pass = pwd_context.verify(form.password, user.hashed_password)
         if not correct_pass:
             raise HTTPException(status_code=404, detail='Пароль неверный')
         else:
@@ -57,9 +58,9 @@ async def login_func(item: UserRegister, db: AsyncSession = Depends(get_db)):
             algo = 'HS256'
             payload = {
                 "user": user.id,
-                "email": item.email,
+                "email": form.username,
                 "exp": datetime.utcnow() + timedelta(minutes=10)
             }
 
             token = jwt.encode(payload, secret, algorithm=algo)
-    return token
+    return {"access_token": token, "token_type": "bearer"}
